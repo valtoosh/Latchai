@@ -3,7 +3,10 @@ class LatchaiApp {
   constructor() {
     this.currentPage = 'dashboard';
     this.matches = [];
-    this.init();
+    this.currentMatch = null;
+    this.currentMatchMode = 'history'; // 'history' or 'plan'
+    this.currentConversation = [];
+    this.aiMessages = []; // Store AI chat messages
   }
 
   init() {
@@ -185,6 +188,8 @@ class LatchaiApp {
       this.initMatchesPage();
     } else if (page === 'match-detail') {
       this.initMatchDetailPage();
+    } else if (page === 'settings') {
+      this.initSettingsPage();
     }
   }
 
@@ -421,26 +426,56 @@ class LatchaiApp {
       </div>
       
       <div class="card">
-        <h3 style="margin-bottom: 24px;">AI Preferences</h3>
+        <h3 style="margin-bottom: 24px;">AI Configuration</h3>
         
         <div class="form-group">
-          <label for="ai-tone">AI Suggestion Tone</label>
-          <select id="ai-tone">
-            <option value="conservative">Conservative (Safe & Respectful)</option>
-            <option value="balanced" selected>Balanced (Mix of Safe & Bold)</option>
-            <option value="confident">Confident (Direct & Flirtatious)</option>
+          <label for="ai-provider">AI Provider</label>
+          <select id="ai-provider">
+            <option value="gemini">Google Gemini (Free tier available)</option>
+            <option value="ollama">Ollama (Local, completely free)</option>
           </select>
-        </div>
-        
-        <div class="form-group">
-          <label for="openai-key">OpenAI API Key</label>
-          <input type="password" id="openai-key" placeholder="sk-...">
           <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
-            Your API key is stored locally and never shared
+            Gemini requires an API key. Ollama runs locally on your machine.
           </p>
         </div>
         
-        <button class="btn btn-primary\"><i class=\"fas fa-save\"></i> Save Settings</button>
+        <div id="gemini-settings">
+          <div class="form-group">
+            <label for="gemini-api-key">Gemini API Key</label>
+            <input type="password" id="gemini-api-key" placeholder="Get free key at: https://aistudio.google.com/apikey">
+            <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+              Free tier: 15 requests/minute, 1500 requests/day. Your key is stored locally and never shared.
+            </p>
+          </div>
+        </div>
+        
+        <div id="ollama-settings" style="display: none;">
+          <div class="form-group">
+            <label for="ollama-url">Ollama URL</label>
+            <input type="text" id="ollama-url" placeholder="http://localhost:11434" value="http://localhost:11434">
+          </div>
+          
+          <div class="form-group">
+            <label for="ollama-model">Model</label>
+            <select id="ollama-model">
+              <option value="llama3.2:3b">llama3.2:3b (Fast, lightweight)</option>
+              <option value="llama3.1:8b">llama3.1:8b (Better quality)</option>
+              <option value="qwen2.5:7b">qwen2.5:7b (Good for conversation)</option>
+              <option value="gemma2:9b">gemma2:9b (Nuanced responses)</option>
+            </select>
+          </div>
+          
+          <p style="font-size: 12px; color: var(--text-secondary); padding: 12px; background: var(--bg-input); border-radius: 8px;">
+            <strong>To use Ollama:</strong><br>
+            1. Install: <code>brew install ollama</code><br>
+            2. Start: <code>ollama serve</code><br>
+            3. Pull model: <code>ollama pull llama3.2:3b</code>
+          </p>
+        </div>
+        
+        <button class="btn btn-primary" id="save-ai-settings-btn">
+          <i class="fas fa-save"></i> Save AI Settings
+        </button>
       </div>
       
       <div class="card">
@@ -681,21 +716,23 @@ class LatchaiApp {
           
           <div class="ai-chat-main">
             <div class="ai-chat-messages" id="ai-chat-messages">
-              <div class="ai-message">
-                <div class="message-avatar">
-                  <i class="fas fa-robot"></i>
+              ${this.aiMessages.length === 0 ? `
+                <div class="ai-message">
+                  <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                  </div>
+                  <div class="message-content">
+                    <p>Hi! I'm your AI dating assistant. I can help you with:</p>
+                    <ul>
+                      <li>Conversation starters and opening lines</li>
+                      <li>Response suggestions based on context</li>
+                      <li>Dating strategy and timing advice</li>
+                      <li>Profile analysis and compatibility insights</li>
+                    </ul>
+                    <p>What would you like help with regarding ${match.name}?</p>
+                  </div>
                 </div>
-                <div class="message-content">
-                  <p>Hi! I'm your AI dating assistant. I can help you with:</p>
-                  <ul>
-                    <li>Conversation starters and opening lines</li>
-                    <li>Response suggestions based on context</li>
-                    <li>Dating strategy and timing advice</li>
-                    <li>Profile analysis and compatibility insights</li>
-                  </ul>
-                  <p>What would you like help with regarding ${match.name}?</p>
-                </div>
-              </div>
+              ` : this.renderAIMessages()}
             </div>
             
             <div class="quick-actions">
@@ -749,6 +786,7 @@ class LatchaiApp {
     if (planBtn) {
       planBtn.addEventListener('click', () => {
         this.currentMatchMode = 'plan';
+        this.aiMessages = []; // Reset AI chat when switching to plan mode
         this.loadPage('match-detail');
       });
     }
@@ -771,10 +809,16 @@ class LatchaiApp {
     
     // Plan mode: Quick action buttons
     const quickActionBtns = document.querySelectorAll('.quick-action-btn');
-    quickActionBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const text = e.currentTarget.textContent.trim();
-        alert(`Quick action: ${text}\n\nAI suggestion feature coming soon!`);
+    quickActionBtns.forEach((btn, index) => {
+      btn.addEventListener('click', async (e) => {
+        const prompts = [
+          'Suggest a creative opening line for me to send',
+          'Analyze our compatibility based on the profile',
+          'What\'s the best time to reply based on our conversation?'
+        ];
+        if (prompts[index]) {
+          await this.sendAIMessage(prompts[index]);
+        }
       });
     });
     
@@ -782,11 +826,19 @@ class LatchaiApp {
     const sendBtn = document.getElementById('send-ai-message');
     const input = document.getElementById('ai-chat-input');
     if (sendBtn && input) {
-      sendBtn.addEventListener('click', () => {
+      const sendMessage = async () => {
         const message = input.value.trim();
         if (message) {
-          alert(`You asked: ${message}\n\nAI response feature coming soon!`);
           input.value = '';
+          await this.sendAIMessage(message);
+        }
+      };
+      
+      sendBtn.addEventListener('click', sendMessage);
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
         }
       });
     }
@@ -822,6 +874,86 @@ class LatchaiApp {
       console.error('Error adding message:', error);
       alert('Error adding message. Please try again.');
     }
+  }
+
+  async sendAIMessage(userMessage) {
+    const match = this.currentMatch;
+    
+    // Add user message to chat
+    this.aiMessages.push({
+      role: 'user',
+      content: userMessage
+    });
+    
+    // Re-render to show user message and loading state
+    this.loadPage('match-detail');
+    
+    try {
+      // Build message history for API
+      const messages = this.aiMessages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+      
+      // Call AI service via IPC
+      const result = await window.api.aiChat(messages, match.id);
+      
+      if (result.success) {
+        // Add AI response
+        this.aiMessages.push({
+          role: 'assistant',
+          content: result.message
+        });
+      } else {
+        // Add error message
+        this.aiMessages.push({
+          role: 'assistant',
+          content: `⚠️ ${result.error}\n\n${result.error.includes('API key') ? 'Please set your Gemini API key in Settings.' : result.error.includes('Ollama') ? 'Please make sure Ollama is running with: ollama serve' : 'Please try again or check your AI settings.'}`
+        });
+      }
+    } catch (error) {
+      console.error('Error sending AI message:', error);
+      this.aiMessages.push({
+        role: 'assistant',
+        content: `⚠️ Error: ${error.message}\n\nPlease check your AI settings.`
+      });
+    }
+    
+    // Re-render with response
+    this.loadPage('match-detail');
+    
+    // Scroll to bottom of chat
+    setTimeout(() => {
+      const chatContainer = document.getElementById('ai-chat-messages');
+      if (chatContainer) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+    }, 100);
+  }
+
+  renderAIMessages() {
+    return this.aiMessages.map(msg => {
+      if (msg.role === 'user') {
+        return `
+          <div class="ai-message user-ai-message">
+            <div class="message-content user-message-content">
+              <p>${msg.content.replace(/\n/g, '<br>')}</p>
+            </div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="ai-message">
+            <div class="message-avatar">
+              <i class="fas fa-robot"></i>
+            </div>
+            <div class="message-content">
+              <p>${msg.content.replace(/\n/g, '<br>')}</p>
+            </div>
+          </div>
+        `;
+      }
+    }).join('');
   }
 
   renderMatchCard(match) {
@@ -890,11 +1022,66 @@ class LatchaiApp {
         location: 'Mission',
         status: 'green',
         statusLabel: 'Green • high energy',
-        prompt: 'Currently building a playlist for a road trip I haven’t planned yet.',
+        prompt: 'Currently building a playlist for a road trip I haven\'t planned yet.',
         vibe: 'High engagement',
         photo: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=400&q=60'
       }
     ];
+  }
+
+  async initSettingsPage() {
+    // Load current settings
+    const settings = await window.api.getAISettings();
+    
+    const providerSelect = document.getElementById('ai-provider');
+    const geminiApiKeyInput = document.getElementById('gemini-api-key');
+    const ollamaUrlInput = document.getElementById('ollama-url');
+    const ollamaModelSelect = document.getElementById('ollama-model');
+    const geminiSettings = document.getElementById('gemini-settings');
+    const ollamaSettings = document.getElementById('ollama-settings');
+    const saveBtn = document.getElementById('save-ai-settings-btn');
+    
+    // Set current values
+    if (providerSelect) providerSelect.value = settings.provider;
+    if (geminiApiKeyInput) geminiApiKeyInput.value = settings.geminiApiKey || '';
+    if (ollamaUrlInput) ollamaUrlInput.value = settings.ollamaUrl;
+    if (ollamaModelSelect) ollamaModelSelect.value = settings.ollamaModel;
+    
+    // Show/hide settings based on provider
+    const toggleProviderSettings = () => {
+      const provider = providerSelect.value;
+      if (geminiSettings) geminiSettings.style.display = provider === 'gemini' ? 'block' : 'none';
+      if (ollamaSettings) ollamaSettings.style.display = provider === 'ollama' ? 'block' : 'none';
+    };
+    
+    toggleProviderSettings();
+    
+    if (providerSelect) {
+      providerSelect.addEventListener('change', toggleProviderSettings);
+    }
+    
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        const newSettings = {
+          provider: providerSelect.value,
+          geminiApiKey: geminiApiKeyInput.value,
+          ollamaUrl: ollamaUrlInput.value,
+          ollamaModel: ollamaModelSelect.value
+        };
+        
+        try {
+          const result = await window.api.saveAISettings(newSettings);
+          if (result.success) {
+            alert('AI settings saved successfully!');
+          } else {
+            alert(`Error saving settings: ${result.error}`);
+          }
+        } catch (error) {
+          console.error('Error saving AI settings:', error);
+          alert('Error saving settings. Please try again.');
+        }
+      });
+    }
   }
 }
 
@@ -902,4 +1089,5 @@ class LatchaiApp {
 let app;
 document.addEventListener('DOMContentLoaded', () => {
   app = new LatchaiApp();
+  app.init();
 });

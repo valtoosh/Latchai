@@ -24,9 +24,10 @@ contextBridge.exposeInMainWorld('api', {
   updateMessage: (id, message) => ipcRenderer.invoke('update-message', id, message),
   
   // AI Services
-  generateSuggestions: (context) => ipcRenderer.invoke('generate-suggestions', context),
-  analyzeConversation: (conversation) => ipcRenderer.invoke('analyze-conversation', conversation),
-  getCompatibilityScore: (userProfile, matchProfile) => ipcRenderer.invoke('get-compatibility-score', userProfile, matchProfile),
+  aiChat: (messages, matchId) => ipcRenderer.invoke('ai-chat', { messages, matchId }),
+  generateSuggestions: (matchId) => ipcRenderer.invoke('generate-suggestions', matchId),
+  getAISettings: () => ipcRenderer.invoke('get-ai-settings'),
+  saveAISettings: (settings) => ipcRenderer.invoke('save-ai-settings', settings),
   
   // Library
   saveToLibrary: (item) => ipcRenderer.invoke('save-to-library', item),

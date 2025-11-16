@@ -1017,6 +1017,10 @@ label {
   margin-bottom: 20px;
 }
 
+.ai-message.user-ai-message {
+  justify-content: flex-end;
+}
+
 .message-avatar {
   width: 40px;
   height: 40px;
@@ -1034,6 +1038,12 @@ label {
   background-color: var(--bg-input);
   padding: 16px;
   border-radius: 12px;
+}
+
+.user-message-content {
+  background: linear-gradient(135deg, var(--accent-primary), #9b7dff);
+  color: #ffffff;
+  max-width: 70%;
 }
 
 .message-content ul {
@@ -1113,4 +1123,13 @@ label {
 .prompt-answer:focus {
   outline: none;
   border-color: var(--accent-primary);
+}
+
+code {
+  background: var(--bg-input);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Courier New', monospace;
+  font-size: 13px;
+  color: var(--accent-primary);
 }

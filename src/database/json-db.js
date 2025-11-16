@@ -174,6 +174,17 @@ class JsonDatabase {
     this.save();
     return value;
   }
+
+  // Get all data
+  getData() {
+    return this.data;
+  }
+
+  // Save data
+  saveData(data) {
+    this.data = data;
+    this.save();
+  }
 }
 
 let dbInstance = null;

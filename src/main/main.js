@@ -2,9 +2,11 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 require('dotenv').config();
 const { initDatabase } = require('../database/json-db');
+const AIService = require('../services/ai-service');
 
 let mainWindow;
 let db;
+let aiService;
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
@@ -42,6 +44,21 @@ function createMainWindow() {
 app.whenReady().then(() => {
   // Initialize database
   db = initDatabase();
+  
+  // Initialize AI service
+  aiService = new AIService();
+  
+  // Load saved AI settings
+  const savedSettings = db.getData().settings || {};
+  if (savedSettings.aiProvider) {
+    aiService.setProvider(savedSettings.aiProvider);
+  }
+  if (savedSettings.geminiApiKey) {
+    aiService.setGeminiApiKey(savedSettings.geminiApiKey);
+  }
+  if (savedSettings.ollamaUrl && savedSettings.ollamaModel) {
+    aiService.setOllamaConfig(savedSettings.ollamaUrl, savedSettings.ollamaModel);
+  }
   
   createMainWindow();
 
@@ -107,20 +124,91 @@ ipcMain.handle('get-conversation', async (event, matchId) => {
   return db.getConversation(matchId);
 });
 
-// Placeholder handlers for AI services (to be implemented)
-ipcMain.handle('generate-suggestions', async (event, context) => {
-  // TODO: Implement OpenAI integration
-  return { suggestions: [] };
+// AI Chat handlers
+ipcMain.handle('ai-chat', async (event, { messages, matchId }) => {
+  try {
+    const match = db.getMatch(matchId);
+    if (!match) {
+      throw new Error('Match not found');
+    }
+    
+    const conversation = db.getConversation(matchId);
+    const matchContext = { match, conversation };
+    
+    const response = await aiService.chat(messages, matchContext);
+    return { success: true, message: response };
+  } catch (error) {
+    console.error('AI chat error:', error);
+    return { success: false, error: error.message };
+  }
 });
 
-ipcMain.handle('analyze-conversation', async (event, conversation) => {
-  // TODO: Implement conversation analysis
-  return { analysis: {} };
+ipcMain.handle('generate-suggestions', async (event, matchId) => {
+  try {
+    const match = db.getMatch(matchId);
+    if (!match) {
+      throw new Error('Match not found');
+    }
+    
+    const conversation = db.getConversation(matchId);
+    const matchContext = { match, conversation };
+    
+    const suggestions = await aiService.getSuggestions(matchContext);
+    return { success: true, suggestions };
+  } catch (error) {
+    console.error('Generate suggestions error:', error);
+    return { success: false, error: error.message };
+  }
 });
 
-ipcMain.handle('get-compatibility-score', async (event, userProfile, matchProfile) => {
-  // TODO: Implement compatibility scoring
-  return { score: 0 };
+// AI Settings handlers
+ipcMain.handle('get-ai-settings', async () => {
+  if (!db) {
+    return {
+      provider: 'gemini',
+      geminiApiKey: process.env.GEMINI_API_KEY || '',
+      ollamaUrl: 'http://localhost:11434',
+      ollamaModel: 'llama3.2:3b'
+    };
+  }
+  
+  const settings = db.getData().settings || {};
+  return {
+    provider: settings.aiProvider || 'gemini',
+    geminiApiKey: settings.geminiApiKey || process.env.GEMINI_API_KEY || '',
+    ollamaUrl: settings.ollamaUrl || 'http://localhost:11434',
+    ollamaModel: settings.ollamaModel || 'llama3.2:3b'
+  };
+});
+
+ipcMain.handle('save-ai-settings', async (event, settings) => {
+  if (!db) {
+    return { success: false, error: 'Database not initialized' };
+  }
+  
+  try {
+    const data = db.getData();
+    data.settings = data.settings || {};
+    data.settings.aiProvider = settings.provider;
+    data.settings.geminiApiKey = settings.geminiApiKey || '';
+    data.settings.ollamaUrl = settings.ollamaUrl || 'http://localhost:11434';
+    data.settings.ollamaModel = settings.ollamaModel || 'llama3.2:3b';
+    db.saveData(data);
+    
+    // Update AI service
+    aiService.setProvider(settings.provider);
+    if (settings.geminiApiKey) {
+      aiService.setGeminiApiKey(settings.geminiApiKey);
+    }
+    if (settings.ollamaUrl && settings.ollamaModel) {
+      aiService.setOllamaConfig(settings.ollamaUrl, settings.ollamaModel);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Save AI settings error:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 // Library handlers
