@@ -1,0 +1,47 @@
+{
+  "name": "latchai",
+  "version": "1.0.0",
+  "description": "AI-Powered Dating Conversation Assistant",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "NODE_ENV=development electron .",
+    "build": "electron-builder"
+  },
+  "keywords": [
+    "dating",
+    "ai",
+    "assistant",
+    "hinge"
+  ],
+  "author": "",
+  "license": "ISC",
+  "build": {
+    "appId": "com.latchai.app",
+    "productName": "Latchai",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.ico"
+    }
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.1.0",
+    "dotenv": "^17.2.3",
+    "electron": "^39.2.1",
+    "electron-builder": "^26.0.12"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.7.2",
+    "electron-rebuild": "^3.2.9"
+  }
+}

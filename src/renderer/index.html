@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Latchai - AI Dating Assistant</title>
+  <link rel="stylesheet" href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Navigation Sidebar -->
+    <nav id="sidebar">
+      <div class="logo">
+        <h1>Latchai</h1>
+        <p class="tagline">Your AI Dating Assistant</p>
+      </div>
+      
+      <ul class="nav-menu">
+        <li class="nav-item active" data-page="dashboard">
+          <span class="icon"><i class="fas fa-home"></i></span>
+          <span class="label">Dashboard</span>
+        </li>
+        <li class="nav-item" data-page="profile">
+          <span class="icon"><i class="fas fa-user"></i></span>
+          <span class="label">My Profile</span>
+        </li>
+        <li class="nav-item" data-page="matches">
+          <span class="icon"><i class="fas fa-heart"></i></span>
+          <span class="label">Matches</span>
+        </li>
+        <li class="nav-item" data-page="library">
+          <span class="icon"><i class="fas fa-bookmark"></i></span>
+          <span class="label">Library</span>
+        </li>
+        <li class="nav-item" data-page="analytics">
+          <span class="icon"><i class="fas fa-chart-line"></i></span>
+          <span class="label">Analytics</span>
+        </li>
+        <li class="nav-item" data-page="settings">
+          <span class="icon"><i class="fas fa-cog"></i></span>
+          <span class="label">Settings</span>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main id="main-content">
+      <header id="top-bar">
+        <div class="app-title">
+          <p class="eyebrow">Planning your next move</p>
+          <h2>Latchai <span>for Hinge</span></h2>
+        </div>
+        <div class="profile-chip">
+          <div class="profile-initials">V</div>
+          <div class="profile-meta">
+            <p class="name">Val</p>
+            <p class="status">Calm & confident</p>
+          </div>
+        </div>
+      </header>
+      <div id="page-container">
+        <!-- Pages will be loaded here dynamically -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Add Match Modal -->
+  <div id="add-match-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add New Match</h2>
+        <button class="modal-close" id="close-modal">&times;</button>
+      </div>
+      <form id="add-match-form">
+        <div class="form-group">
+          <label for="match-name">Name *</label>
+          <input type="text" id="match-name" required placeholder="e.g., Jenna">
+        </div>
+        
+        <div class="two-col">
+          <div class="form-group">
+            <label for="match-age">Age *</label>
+            <input type="number" id="match-age" required placeholder="28">
+          </div>
+          
+          <div class="form-group">
+            <label for="match-location">Location</label>
+            <input type="text" id="match-location" placeholder="San Francisco, CA">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="match-occupation">Occupation</label>
+          <input type="text" id="match-occupation" placeholder="Product Designer">
+        </div>
+        
+        <div class="form-group">
+          <label for="match-dating-intentions">Dating Intentions</label>
+          <select id="match-dating-intentions">
+            <option value="">Select intentions...</option>
+            <option value="life-partner">Life partner</option>
+            <option value="long-term-open-to-short">Long-term relationship, open to short</option>
+            <option value="long-term">Long-term relationship</option>
+            <option value="short-term-open-to-long">Short-term relationship, open to long</option>
+            <option value="short-term">Short-term relationship</option>
+            <option value="figuring-out">Figuring out my dating goals</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="match-bio">Bio / About</label>
+          <textarea id="match-bio" rows="3" placeholder="Brief bio or first impression..."></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>Hinge Prompts (Add up to 3)</label>
+          <div class="prompt-inputs">
+            <div class="prompt-item">
+              <select class="prompt-question">
+                <option value="">Select a prompt...</option>
+                <option value="Perfect Sunday:">Perfect Sunday:</option>
+                <option value="I'm looking for:">I'm looking for:</option>
+                <option value="I get way too competitive about:">I get way too competitive about:</option>
+                <option value="The way to win me over is:">The way to win me over is:</option>
+                <option value="My most controversial opinion:">My most controversial opinion:</option>
+                <option value="I'm convinced that:">I'm convinced that:</option>
+                <option value="A perfect day would include:">A perfect day would include:</option>
+                <option value="Green flags I look for:">Green flags I look for:</option>
+                <option value="I'm a regular at:">I'm a regular at:</option>
+                <option value="My ideal date night is:">My ideal date night is:</option>
+                <option value="I'm passionate about:">I'm passionate about:</option>
+                <option value="A random fact I love is:">A random fact I love is:</option>
+                <option value="Together, we could:">Together, we could:</option>
+                <option value="I won't shut up about:">I won't shut up about:</option>
+                <option value="My simple pleasures:">My simple pleasures:</option>
+                <option value="I go crazy for:">I go crazy for:</option>
+                <option value="The hallmark of a good relationship is:">The hallmark of a good relationship is:</option>
+                <option value="I'm weirdly attracted to:">I'm weirdly attracted to:</option>
+                <option value="Unusual skills:">Unusual skills:</option>
+                <option value="My greatest strength:">My greatest strength:</option>
+              </select>
+              <textarea class="prompt-answer" rows="2" placeholder="Their answer..."></textarea>
+            </div>
+            <div class="prompt-item">
+              <select class="prompt-question">
+                <option value="">Select a prompt...</option>
+                <option value="Perfect Sunday:">Perfect Sunday:</option>
+                <option value="I'm looking for:">I'm looking for:</option>
+                <option value="I get way too competitive about:">I get way too competitive about:</option>
+                <option value="The way to win me over is:">The way to win me over is:</option>
+                <option value="My most controversial opinion:">My most controversial opinion:</option>
+                <option value="I'm convinced that:">I'm convinced that:</option>
+                <option value="A perfect day would include:">A perfect day would include:</option>
+                <option value="Green flags I look for:">Green flags I look for:</option>
+                <option value="I'm a regular at:">I'm a regular at:</option>
+                <option value="My ideal date night is:">My ideal date night is:</option>
+                <option value="I'm passionate about:">I'm passionate about:</option>
+                <option value="A random fact I love is:">A random fact I love is:</option>
+                <option value="Together, we could:">Together, we could:</option>
+                <option value="I won't shut up about:">I won't shut up about:</option>
+                <option value="My simple pleasures:">My simple pleasures:</option>
+                <option value="I go crazy for:">I go crazy for:</option>
+                <option value="The hallmark of a good relationship is:">The hallmark of a good relationship is:</option>
+                <option value="I'm weirdly attracted to:">I'm weirdly attracted to:</option>
+                <option value="Unusual skills:">Unusual skills:</option>
+                <option value="My greatest strength:">My greatest strength:</option>
+              </select>
+              <textarea class="prompt-answer" rows="2" placeholder="Their answer..."></textarea>
+            </div>
+            <div class="prompt-item">
+              <select class="prompt-question">
+                <option value="">Select a prompt...</option>
+                <option value="Perfect Sunday:">Perfect Sunday:</option>
+                <option value="I'm looking for:">I'm looking for:</option>
+                <option value="I get way too competitive about:">I get way too competitive about:</option>
+                <option value="The way to win me over is:">The way to win me over is:</option>
+                <option value="My most controversial opinion:">My most controversial opinion:</option>
+                <option value="I'm convinced that:">I'm convinced that:</option>
+                <option value="A perfect day would include:">A perfect day would include:</option>
+                <option value="Green flags I look for:">Green flags I look for:</option>
+                <option value="I'm a regular at:">I'm a regular at:</option>
+                <option value="My ideal date night is:">My ideal date night is:</option>
+                <option value="I'm passionate about:">I'm passionate about:</option>
+                <option value="A random fact I love is:">A random fact I love is:</option>
+                <option value="Together, we could:">Together, we could:</option>
+                <option value="I won't shut up about:">I won't shut up about:</option>
+                <option value="My simple pleasures:">My simple pleasures:</option>
+                <option value="I go crazy for:">I go crazy for:</option>
+                <option value="The hallmark of a good relationship is:">The hallmark of a good relationship is:</option>
+                <option value="I'm weirdly attracted to:">I'm weirdly attracted to:</option>
+                <option value="Unusual skills:">Unusual skills:</option>
+                <option value="My greatest strength:">My greatest strength:</option>
+              </select>
+              <textarea class="prompt-answer" rows="2" placeholder="Their answer..."></textarea>
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="match-interests">Interests (comma-separated)</label>
+          <input type="text" id="match-interests" placeholder="hiking, photography, cooking, jazz">
+        </div>
+        
+        <div class="form-group">
+          <label for="match-notes">Your Notes</label>
+          <textarea id="match-notes" rows="2" placeholder="Personal observations or reminders..."></textarea>
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="cancel-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-heart"></i> Add Match
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
