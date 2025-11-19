@@ -54,6 +54,20 @@ class JsonDatabase {
     return this.data.userProfile;
   }
 
+  savePersonalityAssessment(assessment) {
+    if (!this.data.userProfile) {
+      this.data.userProfile = {};
+    }
+    this.data.userProfile.personalityAssessment = assessment;
+    this.data.userProfile.updated_at = new Date().toISOString();
+    this.save();
+    return assessment;
+  }
+
+  getPersonalityAssessment() {
+    return this.data.userProfile?.personalityAssessment || null;
+  }
+
   updateUserProfile(profile) {
     if (this.data.userProfile) {
       profile.updated_at = new Date().toISOString();

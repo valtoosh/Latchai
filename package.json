@@ -37,10 +37,13 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@google/generative-ai": "^0.24.1",
+    "@huggingface/hub": "^2.6.13",
     "axios": "^1.13.2",
     "dotenv": "^17.2.3",
     "electron": "^39.2.1",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "natural": "^8.1.0",
+    "parquetjs": "^0.11.2"
   },
   "devDependencies": {
     "@electron/rebuild": "^3.7.2",

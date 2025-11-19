@@ -133,7 +133,8 @@ ipcMain.handle('ai-chat', async (event, { messages, matchId }) => {
     }
     
     const conversation = db.getConversation(matchId);
-    const matchContext = { match, conversation };
+    const lastUserMessage = messages.length > 0 ? messages[messages.length - 1].content : '';
+    const matchContext = { match, conversation, lastMessage: lastUserMessage };
     
     const response = await aiService.chat(messages, matchContext);
     return { success: true, message: response };
@@ -218,4 +219,12 @@ ipcMain.handle('save-to-library', async (event, item) => {
 
 ipcMain.handle('get-library-items', async (event, category) => {
   return db.getLibraryItems(category);
+});
+
+ipcMain.handle('save-personality-assessment', async (event, assessment) => {
+  return db.savePersonalityAssessment(assessment);
+});
+
+ipcMain.handle('get-personality-assessment', async () => {
+  return db.getPersonalityAssessment();
 });

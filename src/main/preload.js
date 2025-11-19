@@ -31,5 +31,9 @@ contextBridge.exposeInMainWorld('api', {
   
   // Library
   saveToLibrary: (item) => ipcRenderer.invoke('save-to-library', item),
-  getLibraryItems: (category) => ipcRenderer.invoke('get-library-items', category)
+  getLibraryItems: (category) => ipcRenderer.invoke('get-library-items', category),
+  
+  // Personality Assessment
+  savePersonalityAssessment: (assessment) => ipcRenderer.invoke('save-personality-assessment', assessment),
+  getPersonalityAssessment: () => ipcRenderer.invoke('get-personality-assessment')
 });

@@ -1,5 +1,6 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const axios = require('axios');
+const RAGService = require('./rag-service');
 
 class AIService {
   constructor() {
@@ -11,6 +12,15 @@ class AIService {
     if (this.geminiApiKey) {
       this.gemini = new GoogleGenerativeAI(this.geminiApiKey);
     }
+    
+    // Initialize RAG service
+    this.rag = new RAGService();
+    this.initializeRAG();
+  }
+
+  async initializeRAG() {
+    await this.rag.initialize();
+    console.log('RAG Service ready:', this.rag.getStats());
   }
 
   setProvider(provider) {
@@ -144,6 +154,13 @@ YOUR ROLE:
 - Keep responses concise and friendly
 
 The user will ask you questions or request advice about what to say next. Provide thoughtful, specific suggestions.`;
+
+    // Add RAG examples to the prompt
+    const lastUserMessage = matchContext.lastMessage || '';
+    const ragContext = this.rag.getContextForPrompt(lastUserMessage, match);
+    if (ragContext) {
+      prompt += ragContext;
+    }
 
     return prompt;
   }
