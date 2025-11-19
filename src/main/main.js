@@ -127,14 +127,22 @@ ipcMain.handle('get-conversation', async (event, matchId) => {
 // AI Chat handlers
 ipcMain.handle('ai-chat', async (event, { messages, matchId }) => {
   try {
-    const match = db.getMatch(matchId);
-    if (!match) {
-      throw new Error('Match not found');
-    }
+    let matchContext = {
+      userProfile: db.getUserProfile(),
+      personalityAssessment: db.getPersonalityAssessment()
+    };
     
-    const conversation = db.getConversation(matchId);
-    const lastUserMessage = messages.length > 0 ? messages[messages.length - 1].content : '';
-    const matchContext = { match, conversation, lastMessage: lastUserMessage };
+    // If matchId is provided, try to get match context
+    if (matchId) {
+      const match = db.getMatch(matchId);
+      if (match) {
+        const conversation = db.getConversation(matchId);
+        const lastUserMessage = messages.length > 0 ? messages[messages.length - 1].content : '';
+        matchContext.match = match;
+        matchContext.conversation = conversation;
+        matchContext.lastMessage = lastUserMessage;
+      }
+    }
     
     const response = await aiService.chat(messages, matchContext);
     return { success: true, message: response };
@@ -152,7 +160,15 @@ ipcMain.handle('generate-suggestions', async (event, matchId) => {
     }
     
     const conversation = db.getConversation(matchId);
-    const matchContext = { match, conversation };
+    const userProfile = db.getUserProfile();
+    const personalityAssessment = db.getPersonalityAssessment();
+    
+    const matchContext = { 
+      match, 
+      conversation,
+      userProfile,
+      personalityAssessment
+    };
     
     const suggestions = await aiService.getSuggestions(matchContext);
     return { success: true, suggestions };

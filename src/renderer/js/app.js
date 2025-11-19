@@ -9,10 +9,67 @@ class LatchaiApp {
     this.aiMessages = []; // Store AI chat messages
     this.aiMessagesCache = {}; // Cache AI messages per match
     this.conversationsCache = {}; // Cache for analytics
+    this.isProcessingAI = false; // Flag to prevent duplicate AI calls
     this.initialized = false;
     this.analyticsCacheStale = true;
     this.assessmentStep = 1;
     this.assessmentData = {};
+  }
+
+  // Toast notification system
+  showToast(message, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toast-container';
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    const iconMap = {
+      success: 'check-circle',
+      error: 'exclamation-circle',
+      info: 'info-circle'
+    };
+
+    toast.innerHTML = `
+      <i class="fas fa-${iconMap[type]}"></i>
+      <span>${message}</span>
+    `;
+
+    container.appendChild(toast);
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+      toast.style.animation = 'fadeOut 0.3s ease forwards';
+      toast.addEventListener('animationend', () => toast.remove());
+    }, 3000);
+  }
+
+  // HTML sanitization to prevent XSS
+  escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return String(unsafe)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  // Skeleton loading state for matches page
+  getLoadingState() {
+    return `
+      <div class="page-header">
+        <div class="skeleton sk-text" style="width: 200px; height: 40px;"></div>
+        <div class="skeleton sk-text" style="width: 300px;"></div>
+      </div>
+      <div class="match-grid">
+        ${Array(3).fill('<div class="card"><div class="skeleton sk-card"></div></div>').join('')}
+      </div>
+    `;
   }
 
   init() {
@@ -134,10 +191,10 @@ class LatchaiApp {
       // Navigate to matches page to show the new match
       this.navigateTo('matches');
       
-      alert(`${name} added successfully!`);
+      this.showToast(`${name} added successfully!`, 'success');
     } catch (error) {
       console.error('Error adding match:', error);
-      alert('Error adding match. Please try again.');
+      this.showToast('Error adding match. Please try again.', 'error');
     }
   }
 
@@ -239,7 +296,7 @@ class LatchaiApp {
     }
     if (planningBtn) {
       planningBtn.addEventListener('click', () => {
-        alert('Planning mode coming soon!');
+        this.showToast('Planning mode coming soon!', 'info');
       });
     }
   }
@@ -885,7 +942,7 @@ class LatchaiApp {
     }
     if (planningBtn) {
       planningBtn.addEventListener('click', () => {
-        alert('Planning mode coming soon!');
+        this.showToast('Planning mode coming soon!', 'info');
       });
     }
   }
@@ -910,10 +967,10 @@ class LatchaiApp {
         try {
           const result = await window.api.createUserProfile(profile);
           console.log('Profile saved:', result);
-          alert('✅ Profile saved successfully!');
+          this.showToast('Profile saved successfully!', 'success');
         } catch (error) {
           console.error('Error saving profile:', error);
-          alert('❌ Error saving profile: ' + error.message);
+          this.showToast('Error saving profile: ' + error.message, 'error');
         }
       });
     }
@@ -1183,7 +1240,7 @@ Return ONLY valid JSON, no other text.`;
     // Find the match in the database
     const match = this.matches.find(m => m.id == matchId || m.name == matchId);
     if (!match) {
-      alert('Match not found');
+      this.showToast('Match not found', 'error');
       return;
     }
     
@@ -1347,9 +1404,9 @@ Return ONLY valid JSON, no other text.`;
               <strong>Dating Intentions:</strong> ${match.dating_intentions.replace(/-/g, ' ')}
             </div>
             ` : ''}
-            ${match.profile_data?.interests?.length > 0 ? `
+            ${match.profile_data?.interests ? `
             <div class="context-item">
-              <strong>Interests:</strong> ${match.profile_data.interests.join(', ')}
+              <strong>Interests:</strong> ${Array.isArray(match.profile_data.interests) ? match.profile_data.interests.join(', ') : match.profile_data.interests}
             </div>
             ` : ''}
             ${match.notes ? `
@@ -1453,20 +1510,44 @@ Return ONLY valid JSON, no other text.`;
     }
     
     // Plan mode: Quick action buttons
-    // Plan mode: Quick action buttons
     const quickActionBtns = document.querySelectorAll('.quick-action-btn');
+    console.log(`Found ${quickActionBtns.length} quick action buttons`);
     quickActionBtns.forEach((btn, index) => {
+      console.log(`Attaching listener to button ${index}: ${btn.textContent.trim()}`);
       btn.addEventListener('click', async (e) => {
         e.preventDefault();
         e.stopPropagation();
+        
+        console.log(`Button ${index} clicked! Disabled: ${btn.disabled}, Processing: ${this.isProcessingAI}`);
+        
+        // Prevent multiple rapid clicks
+        if (btn.disabled || this.isProcessingAI) {
+          console.log('Button click ignored - already processing');
+          return;
+        }
+        
+        btn.disabled = true;
+        console.log(`Quick action button ${index} - sending prompt`);
         
         const prompts = [
           'Suggest a creative opening line for me to send',
           'Analyze our compatibility based on the profile',
           'What\'s the best time to reply based on our conversation?'
         ];
-        if (prompts[index]) {
-          await this.sendAIMessage(prompts[index]);
+        
+        try {
+          if (prompts[index]) {
+            console.log(`Prompt: ${prompts[index]}`);
+            await this.sendAIMessage(prompts[index]);
+          }
+        } catch (error) {
+          console.error(`Error in button ${index} handler:`, error);
+        } finally {
+          // Always re-enable button
+          setTimeout(() => {
+            btn.disabled = false;
+            console.log(`Button ${index} re-enabled`);
+          }, 500);
         }
       });
     });
@@ -1477,9 +1558,11 @@ Return ONLY valid JSON, no other text.`;
     if (sendBtn && input) {
       const sendMessage = async () => {
         const message = input.value.trim();
-        if (message) {
+        if (message && !this.isProcessingAI) {
           input.value = '';
+          sendBtn.disabled = true;
           await this.sendAIMessage(message);
+          sendBtn.disabled = false;
         }
       };
       
@@ -1523,7 +1606,7 @@ Return ONLY valid JSON, no other text.`;
     const categoryIndex = parseInt(category) - 1;
     
     if (categoryIndex < 0 || categoryIndex > 3) {
-      alert('Invalid category');
+      this.showToast('Invalid category', 'error');
       return;
     }
     
@@ -1538,10 +1621,10 @@ Return ONLY valid JSON, no other text.`;
       };
       
       await window.api.saveToLibrary(item);
-      alert('✓ Saved to Library!');
+      this.showToast('Saved to Library!', 'success');
     } catch (error) {
       console.error('Error saving to library:', error);
-      alert('Error saving to library. Please try again.');
+      this.showToast('Error saving to library. Please try again.', 'error');
     }
   }
   
@@ -1574,10 +1657,10 @@ Return ONLY valid JSON, no other text.`;
       this.analyticsCacheStale = true;
       
       this.loadPage('match-detail');
-      alert('✓ Outcome updated!');
+      this.showToast('Outcome updated!', 'success');
     } catch (error) {
       console.error('Error updating outcome:', error);
-      alert('Error updating outcome. Please try again.');
+      this.showToast('Error updating outcome. Please try again.', 'error');
     }
   }
   
@@ -1634,12 +1717,27 @@ Return ONLY valid JSON, no other text.`;
       this.loadPage('match-detail');
     } catch (error) {
       console.error('Error adding message:', error);
-      alert('Error adding message. Please try again.');
+      this.showToast('Error adding message. Please try again.', 'error');
     }
   }
 
   async sendAIMessage(userMessage) {
     const match = this.currentMatch;
+    
+    // Prevent duplicate calls if already processing
+    if (this.isProcessingAI) {
+      console.log('AI request already in progress, ignoring duplicate');
+      return;
+    }
+    
+    // Validate match exists
+    if (!match || !match.id) {
+      this.showToast('Please select a match first', 'error');
+      return;
+    }
+    
+    console.log('Starting AI message processing...');
+    this.isProcessingAI = true;
     
     // Add user message to chat
     this.aiMessages.push({
@@ -1654,8 +1752,8 @@ Return ONLY valid JSON, no other text.`;
       isThinking: true
     });
     
-    // Re-render to show user message and thinking animation
-    this.loadPage('match-detail');
+    // Update chat display without re-initializing the whole page
+    this.updateAIChatDisplay();
     this.startThinkingAnimation();
     
     try {
@@ -1667,10 +1765,13 @@ Return ONLY valid JSON, no other text.`;
           content: msg.content
         }));
       
+      console.log('Calling AI API...');
       // Call AI service via IPC
       const result = await window.api.aiChat(messages, match.id);
+      console.log('AI API response received:', result.success);
       
       // Remove thinking indicator
+      this.aiMessages = this.aiMessages.filter(msg => !msg.isThinking);
       this.aiMessages = this.aiMessages.filter(msg => !msg.isThinking);
       
       if (result.success) {
@@ -1694,14 +1795,18 @@ Return ONLY valid JSON, no other text.`;
         role: 'assistant',
         content: `⚠️ Error: ${error.message}\n\nPlease check your AI settings.`
       });
+    } finally {
+      // Always release the lock
+      this.isProcessingAI = false;
+      console.log('AI processing complete, flag released');
     }
     
     // Cache AI messages for this match
     const matchId = match.id || match.name;
     this.aiMessagesCache[matchId] = this.aiMessages;
     
-    // Re-render with response
-    this.loadPage('match-detail');
+    // Update chat display without re-initializing
+    this.updateAIChatDisplay();
     
     // Scroll to bottom of chat
     setTimeout(() => {
@@ -1713,6 +1818,14 @@ Return ONLY valid JSON, no other text.`;
       // Re-initialize save to library buttons after render
       this.initSaveToLibraryButtons();
     }, 100);
+  }
+
+  updateAIChatDisplay() {
+    // Update only the chat messages area without re-initializing the whole page
+    const chatContainer = document.getElementById('ai-chat-messages');
+    if (chatContainer) {
+      chatContainer.innerHTML = this.renderAIMessages();
+    }
   }
 
   startThinkingAnimation() {
@@ -1929,13 +2042,13 @@ Return ONLY valid JSON, no other text.`;
         try {
           const result = await window.api.saveAISettings(newSettings);
           if (result.success) {
-            alert('AI settings saved successfully!');
+            this.showToast('AI settings saved successfully!', 'success');
           } else {
-            alert(`Error saving settings: ${result.error}`);
+            this.showToast(`Error saving settings: ${result.error}`, 'error');
           }
         } catch (error) {
           console.error('Error saving AI settings:', error);
-          alert('Error saving settings. Please try again.');
+          this.showToast('Error saving settings. Please try again.', 'error');
         }
       });
     }
@@ -2161,7 +2274,7 @@ Return ONLY valid JSON, no other text.`;
             }, 2500);
           } catch (error) {
             console.error('Error saving assessment:', error);
-            alert('Error saving assessment. Please try again.');
+            this.showToast('Error saving assessment. Please try again.', 'error');
           }
         }
       });
@@ -2327,32 +2440,43 @@ Return ONLY valid JSON, no other text.`;
       const searchTerm = e.target.value.toLowerCase();
       const options = selectElement.querySelectorAll('option');
       
+      let visibleCount = 0;
       options.forEach(option => {
         const text = option.textContent.toLowerCase();
-        option.style.display = text.includes(searchTerm) ? '' : 'none';
+        const isVisible = text.includes(searchTerm);
+        option.style.display = isVisible ? '' : 'none';
+        if (isVisible) visibleCount++;
       });
       
-      // Auto-select first visible option
-      const firstVisible = Array.from(options).find(opt => opt.style.display !== 'none');
-      if (firstVisible && searchTerm) {
-        selectElement.value = firstVisible.value;
+      // If search is cleared, deselect
+      if (!searchTerm) {
+        selectElement.selectedIndex = -1;
+      }
+    });
+    
+    // When selecting from dropdown, clear custom input and search
+    selectElement.addEventListener('change', () => {
+      if (selectElement.selectedIndex >= 0) {
+        customInput.value = '';
+        // Optionally populate search with selected value for clarity
+        searchInput.value = selectElement.options[selectElement.selectedIndex].text;
+      }
+    });
+    
+    // When clicking on select options, ensure selection works
+    selectElement.addEventListener('click', (e) => {
+      // Only clear custom input if an option is actually selected
+      if (e.target.tagName === 'OPTION') {
         customInput.value = '';
       }
     });
     
-    // When selecting from dropdown, clear custom input
-    selectElement.addEventListener('change', () => {
-      customInput.value = '';
-    });
-    
-    // When clicking on select, clear custom input
-    selectElement.addEventListener('click', () => {
-      customInput.value = '';
-    });
-    
-    // When typing custom, clear selection
+    // When typing custom, clear selection and search
     customInput.addEventListener('input', () => {
-      selectElement.selectedIndex = -1;
+      if (customInput.value.trim()) {
+        selectElement.selectedIndex = -1;
+        searchInput.value = '';
+      }
     });
     
     // Close handlers
@@ -2375,7 +2499,7 @@ Return ONLY valid JSON, no other text.`;
       const answer = document.getElementById('prompt-answer').value.trim();
       
       if (!question) {
-        alert('Please select or enter a prompt');
+        this.showToast('Please select or enter a prompt', 'info');
         return;
       }
       
@@ -2392,7 +2516,7 @@ Return ONLY valid JSON, no other text.`;
         this.loadUserPrompts();
       } catch (error) {
         console.error('Error saving prompt:', error);
-        alert('Error saving prompt. Please try again.');
+        this.showToast('Error saving prompt. Please try again.', 'error');
       }
     });
   }
@@ -2409,7 +2533,7 @@ Return ONLY valid JSON, no other text.`;
       this.loadUserPrompts();
     } catch (error) {
       console.error('Error deleting prompt:', error);
-      alert('Error deleting prompt. Please try again.');
+      this.showToast('Error deleting prompt. Please try again.', 'error');
     }
   }
 }

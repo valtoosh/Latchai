@@ -182,18 +182,24 @@ class RAGService {
 
   // Get examples formatted for prompt context
   getContextForPrompt(userQuery, matchProfile) {
-    const query = `${userQuery} ${matchProfile?.interests?.join(' ') || ''} ${matchProfile?.bio || ''}`;
-    const similarExamples = this.findSimilarExamples(query, 3);
+    const interestsText = Array.isArray(matchProfile?.interests) 
+      ? matchProfile.interests.join(' ') 
+      : (matchProfile?.interests || '');
+    const query = `${userQuery} ${interestsText} ${matchProfile?.bio || ''}`;
+    const similarExamples = this.findSimilarExamples(query, 5); // Increased from 3 to 5
 
     if (similarExamples.length === 0) {
       return '';
     }
 
     const examplesText = similarExamples
-      .map((ex, i) => `Example ${i + 1}:\nContext: ${ex.context}\nInput: "${ex.prompt}"\nGood Response: "${ex.response}"`)
+      .map((ex, i) => {
+        const effectivenessLabel = ex.effectiveness === 'high' ? '⭐ Highly Effective' : 'Effective';
+        return `Example ${i + 1} (${effectivenessLabel}):\nContext: ${ex.context}\nMessage: "${ex.prompt}"\nResponse: "${ex.response}"`;
+      })
       .join('\n\n');
 
-    return `\n\nHere are some successful conversation examples for reference:\n\n${examplesText}\n\nNow, generate a response in a similar style but personalized for this specific match.`;
+    return `\n\n📚 SUCCESSFUL CONVERSATION EXAMPLES FROM DATABASE (${this.examples.length.toLocaleString()} total examples):\n\n${examplesText}\n\nUse these examples as inspiration for tone, creativity, and engagement style. Adapt them to fit the current context and the user's personality.`;
   }
 
   // Add new successful example (for learning)
