@@ -1,38 +1,46 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* refined dark palette with slight purple tints */
+  /* Deep, rich dark mode palette */
+  --bg-core: #09090b;
   --bg-soft: #0f0f11;
-  --bg-panel: rgba(20, 20, 23, 0.7); /* transparent for glass effect */
-  --bg-card: #1a1a1d;
+  --bg-panel: rgba(20, 20, 23, 0.65); /* High transparency for glass effect */
+  --bg-card: rgba(30, 30, 35, 0.6);
   --bg-card-hover: #202024;
-  --bg-input: #121214;
+  --bg-input: rgba(18, 18, 20, 0.8);
   --bg-tertiary: rgba(255, 255, 255, 0.03);
   
   --text-primary: #ffffff;
   --text-secondary: #a1a1aa;
   --text-tertiary: #71717a;
   
-  /* refined accent gradients */
-  --accent-primary: #7c5dfa;
-  --primary-color: #7c5dfa;
-  --accent-gradient: linear-gradient(135deg, #7c5dfa 0%, #5b3bc4 100%);
-  --accent-glow: rgba(124, 93, 250, 0.4);
-  --accent-muted: rgba(124, 93, 250, 0.1);
+  /* Vibrant Accent Colors */
+  --accent-primary: #8b5cf6; /* Violet-500 */
+  --accent-secondary: #6d28d9; /* Violet-700 */
+  --primary-color: #8b5cf6;
+  --accent-gradient: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  --accent-glow: rgba(139, 92, 246, 0.5);
+  --accent-muted: rgba(139, 92, 246, 0.1);
   
-  --border-color: rgba(255, 255, 255, 0.06);
-  --border-hover: rgba(255, 255, 255, 0.12);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.15);
   
-  /* lighting */
+  /* Shadows & Glows */
   --shadow-soft: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.2);
-  --shadow-glow: 0 0 20px rgba(124, 93, 250, 0.25);
+  --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  --shadow-hover: 0 20px 40px -10px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 20px rgba(139, 92, 246, 0.15);
+  --glow-soft: 0 0 20px rgba(139, 92, 246, 0.15);
   
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
   
-  --glass-blur: blur(12px);
+  /* Animation Speeds */
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  
+  --glass-blur: blur(20px);
 }
 
 * {
@@ -43,14 +51,82 @@
 
 body {
   font-family: 'Inter', sans-serif;
-  background-color: var(--bg-soft);
-  /* Subtle mesh gradient background */
-  background-image: 
-    radial-gradient(circle at 15% 50%, rgba(124, 93, 250, 0.08), transparent 25%),
-    radial-gradient(circle at 85% 30%, rgba(124, 93, 250, 0.05), transparent 25%);
+  background-color: var(--bg-core);
   color: var(--text-primary);
   overflow: hidden;
   line-height: 1.6;
+  position: relative;
+}
+
+/* --- Ambient Background Animation --- */
+/* Creates a "Lively" nebula effect */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Layer 1: Moving gradients */
+body::before {
+  background: 
+    radial-gradient(circle at 15% 50%, rgba(76, 29, 149, 0.15), transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.12), transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(67, 56, 202, 0.1), transparent 40%);
+  background-size: 200% 200%;
+  animation: ambientShift 20s ease infinite alternate;
+}
+
+/* Layer 2: Subtle noise grain for texture */
+body::after {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.4;
+}
+
+@keyframes ambientShift {
+  0% { background-position: 0% 50%; transform: scale(1); }
+  50% { background-position: 100% 50%; transform: scale(1.05); }
+  100% { background-position: 0% 50%; transform: scale(1); }
+}
+
+/* --- Animated SVG Paths Background --- */
+#animated-paths-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+#animated-paths-bg svg {
+  width: 100%;
+  height: 100%;
+}
+
+#animated-paths-bg path {
+  stroke: var(--accent-primary);
+  fill: none;
+  stroke-linecap: round;
+  animation: pathFlow 20s ease-in-out infinite;
+}
+
+@keyframes pathFlow {
+  0%, 100% {
+    stroke-dashoffset: 1000;
+    opacity: 0.1;
+  }
+  50% {
+    stroke-dashoffset: 0;
+    opacity: 0.3;
+  }
 }
 
 #app {
