@@ -161,6 +161,7 @@ body::after {
   color: var(--text-primary);
   letter-spacing: -0.02em;
   background: linear-gradient(to right, #fff, #ccc);
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   margin-bottom: 4px;
@@ -2203,4 +2204,30 @@ code {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #52525b;
+}
+
+/* Rotating Openers Animation */
+#rotating-openers {
+  position: relative;
+  min-height: 60px;
+}
+
+.opener-line {
+  position: absolute;
+  width: 100%;
+  background: var(--bg-tertiary);
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  border-left: 3px solid var(--primary-color);
+  transition: all 0.5s ease;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.opener-line:first-child {
+  opacity: 1;
+  transform: translateY(0);
 }

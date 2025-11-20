@@ -199,6 +199,12 @@ class LatchaiApp {
   }
 
   navigateTo(page) {
+    // Clean up rotation interval when leaving profile page
+    if (this.currentPage === 'profile' && this.openerRotationInterval) {
+      clearInterval(this.openerRotationInterval);
+      this.openerRotationInterval = null;
+    }
+    
     // Update active nav item
     document.querySelectorAll('.nav-item').forEach(item => {
       item.classList.remove('active');
@@ -460,9 +466,14 @@ class LatchaiApp {
         <p style="color: var(--text-secondary); margin-bottom: 24px;">
           Take a comprehensive 5-step assessment to help our AI understand your personality, communication style, and dating approach.
         </p>
-        <button class="btn btn-primary" id="start-assessment-btn">
-          <i class="fas fa-clipboard-list"></i> Take Assessment
-        </button>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn btn-primary" id="start-assessment-btn">
+            <i class="fas fa-clipboard-list"></i> Take Assessment
+          </button>
+          <button class="btn btn-secondary" id="retake-assessment-btn" style="display: none;">
+            <i class="fas fa-refresh"></i> Retake Assessment
+          </button>
+        </div>
       </div>
       
       <div class="card">
@@ -985,6 +996,17 @@ class LatchaiApp {
       });
     }
     
+    const retakeAssessmentBtn = document.getElementById('retake-assessment-btn');
+    if (retakeAssessmentBtn) {
+      retakeAssessmentBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showPersonalityAssessment();
+      });
+    }
+    
+    // Check if assessment exists and show/hide appropriate button
+    this.checkAssessmentStatus();
+    
     const addPromptBtn = document.getElementById('add-prompt-btn');
     if (addPromptBtn) {
       addPromptBtn.addEventListener('click', () => {
@@ -1022,6 +1044,26 @@ class LatchaiApp {
       await this.loadSignatureVibe();
     } catch (error) {
       console.error('Error loading profile:', error);
+    }
+  }
+
+  async checkAssessmentStatus() {
+    try {
+      const assessment = await window.api.getPersonalityAssessment();
+      const startBtn = document.getElementById('start-assessment-btn');
+      const retakeBtn = document.getElementById('retake-assessment-btn');
+      
+      if (assessment && Object.keys(assessment).length > 0) {
+        // Assessment exists, show retake button
+        if (startBtn) startBtn.style.display = 'none';
+        if (retakeBtn) retakeBtn.style.display = 'inline-flex';
+      } else {
+        // No assessment, show start button
+        if (startBtn) startBtn.style.display = 'inline-flex';
+        if (retakeBtn) retakeBtn.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Error checking assessment status:', error);
     }
   }
 
@@ -1071,26 +1113,20 @@ class LatchaiApp {
                 <i class="fas fa-comment-dots" style="color: var(--primary-color); margin-right: 6px;"></i>
                 Your Personalized Openers
               </p>
-              <div style="display: flex; flex-direction: column; gap: 10px;">
-                ${vibe.pickupLines.map(line => `
-                  <div style="background: var(--bg-tertiary); padding: 12px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); border-left: 3px solid var(--primary-color);">
+              <div id="rotating-openers" style="display: flex; flex-direction: column; gap: 10px; position: relative; min-height: 60px;">
+                ${vibe.pickupLines.map((line, index) => `
+                  <div class="opener-line" data-index="${index}" style="background: var(--bg-tertiary); padding: 12px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); border-left: 3px solid var(--primary-color); position: absolute; width: 100%; opacity: ${index === 0 ? '1' : '0'}; transform: translateY(${index === 0 ? '0' : '20px'}); transition: all 0.5s ease;">
                     "${line}"
                   </div>
                 `).join('')}
               </div>
             </div>
           ` : ''}
-          <button class="btn btn-secondary" id="retake-assessment-btn" style="margin-top: 16px;">
-            <i class="fas fa-refresh"></i> Retake
-          </button>
         `;
         
-        const retakeBtn = document.getElementById('retake-assessment-btn');
-        if (retakeBtn) {
-          retakeBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.showPersonalityAssessment();
-          });
+        // Start rotation animation for openers
+        if (vibe.pickupLines && vibe.pickupLines.length > 1) {
+          this.startOpenerRotation();
         }
       } else {
         console.log('No assessment found, showing default message');
@@ -1144,7 +1180,9 @@ Generate a signature vibe in this EXACT JSON format:
   "pickupLines": [
     "First catchy, personalized pickup line that references their interests/personality",
     "Second pickup line that matches their humor style and communication approach",
-    "Third pickup line that's flirty but authentic to their vibe"
+    "Third pickup line that's flirty but authentic to their vibe",
+    "Fourth pickup line that's playful and shows personality",
+    "Fifth pickup line that's clever and conversation-starting"
   ]
 }
 
@@ -1203,10 +1241,42 @@ Return ONLY valid JSON, no other text.`;
     const pickupLines = [
       "So, what's your take on spontaneous adventures vs. planned itineraries?",
       "I noticed we have similar vibes—want to grab coffee and see where the conversation takes us?",
-      "Your profile caught my eye. What's something you're passionate about that most people don't know?"
+      "Your profile caught my eye. What's something you're passionate about that most people don't know?",
+      "If you could have dinner with anyone, dead or alive, who would it be and what would you order?",
+      "What's your go-to move when you want to impress someone—cooking, playlist curation, or something else?"
     ];
     
     return { tagline, traits, pickupLines };
+  }
+
+  startOpenerRotation() {
+    if (this.openerRotationInterval) {
+      clearInterval(this.openerRotationInterval);
+    }
+    
+    let currentIndex = 0;
+    
+    this.openerRotationInterval = setInterval(() => {
+      const openers = document.querySelectorAll('.opener-line');
+      if (!openers || openers.length === 0) {
+        clearInterval(this.openerRotationInterval);
+        return;
+      }
+      
+      const nextIndex = (currentIndex + 1) % openers.length;
+      
+      // Fade out current
+      openers[currentIndex].style.opacity = '0';
+      openers[currentIndex].style.transform = 'translateY(-20px)';
+      
+      // Fade in next
+      setTimeout(() => {
+        openers[nextIndex].style.opacity = '1';
+        openers[nextIndex].style.transform = 'translateY(0)';
+      }, 250);
+      
+      currentIndex = nextIndex;
+    }, 10000); // Rotate every 10 seconds
   }
 
   initMatchesPage() {
@@ -2271,6 +2341,7 @@ Return ONLY valid JSON, no other text.`;
             setTimeout(() => {
               successMsg.remove();
               this.loadPage('profile');
+              this.initProfilePage();
             }, 2500);
           } catch (error) {
             console.error('Error saving assessment:', error);
