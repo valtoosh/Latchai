@@ -1374,16 +1374,20 @@ Return ONLY valid JSON, no other text.`;
           
           <div class="mode-toggle">
             <button class="mode-btn ${mode === 'history' ? 'active' : ''}" id="history-mode-btn">
-              <i class="fas fa-history"></i> History
+              <i class="fas fa-comments"></i> Conversation
             </button>
             <button class="mode-btn ${mode === 'plan' ? 'active' : ''}" id="plan-mode-btn">
-              <i class="fas fa-lightbulb"></i> Plan
+              <i class="fas fa-robot"></i> AI Assistant
             </button>
           </div>
           
           <div class="match-actions">
-            <button class="btn btn-secondary btn-sm" id="update-outcome-btn">
-              <i class="fas fa-trophy"></i> Update Outcome
+            ${this.getConversationHealthBadge()}
+            <button class="btn btn-secondary btn-sm" id="view-profile-btn" title="View full profile">
+              <i class="fas fa-user"></i>
+            </button>
+            <button class="btn btn-secondary btn-sm" id="update-outcome-btn" title="Update outcome">
+              <i class="fas fa-flag"></i>
             </button>
           </div>
         </div>
@@ -1406,18 +1410,28 @@ Return ONLY valid JSON, no other text.`;
   getHistoryModeContent(match) {
     // Get conversation from current loaded conversation
     const messages = this.currentConversation || [];
+    const messageCount = messages.length;
+    const lastMessageTime = messages.length > 0 ? this.formatRelativeTime(messages[messages.length - 1].timestamp) : 'No messages';
     
     return `
       <div class="history-mode">
         <div class="conversation-container">
           <div class="conversation-header">
-            <h3>Conversation History</h3>
+            <div>
+              <h3>Conversation History</h3>
+              <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+                ${messageCount} ${messageCount === 1 ? 'message' : 'messages'} • Last: ${lastMessageTime}
+              </p>
+            </div>
             <div class="message-type-btns">
-              <button class="btn btn-secondary" id="add-user-message-btn">
-                <i class="fas fa-user"></i> Add My Message
+              <button class="btn btn-secondary btn-sm" id="bulk-import-btn" title="Paste multiple messages">
+                <i class="fas fa-paste"></i> Bulk Import
               </button>
-              <button class="btn btn-primary" id="add-match-message-btn">
-                <i class="fas fa-heart"></i> Add ${match.name}'s Message
+              <button class="btn btn-secondary btn-sm" id="add-user-message-btn">
+                <i class="fas fa-user"></i> You
+              </button>
+              <button class="btn btn-primary btn-sm" id="add-match-message-btn">
+                <i class="fas fa-heart"></i> ${match.name}
               </button>
             </div>
           </div>
@@ -1427,24 +1441,59 @@ Return ONLY valid JSON, no other text.`;
               <div class="empty-state">
                 <i class="fas fa-comments" style="font-size: 48px; color: var(--text-secondary); margin-bottom: 16px;"></i>
                 <h4>No messages yet</h4>
-                <p style="color: var(--text-secondary);">Start adding messages to simulate your conversation with ${match.name}</p>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">Track your Hinge conversation here to get better AI suggestions</p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                  <button class="btn btn-secondary" onclick="document.getElementById('bulk-import-btn').click()">
+                    <i class="fas fa-paste"></i> Paste Conversation
+                  </button>
+                  <button class="btn btn-primary" onclick="document.getElementById('add-match-message-btn').click()">
+                    <i class="fas fa-plus"></i> Add First Message
+                  </button>
+                </div>
               </div>
             ` : this.renderChatMessages(messages)}
           </div>
+          
+          ${messages.length > 0 ? `
+            <div class="conversation-actions" style="padding: 16px; border-top: 1px solid var(--border-color); display: flex; gap: 12px;">
+              <button class="btn btn-secondary btn-sm" id="clear-conversation-btn">
+                <i class="fas fa-trash"></i> Clear All
+              </button>
+              <button class="btn btn-secondary btn-sm" id="export-conversation-btn">
+                <i class="fas fa-download"></i> Export
+              </button>
+            </div>
+          ` : ''}
         </div>
       </div>
     `;
   }
   
   renderChatMessages(messages) {
-    return messages.map(msg => `
-      <div class="chat-message ${msg.sender === 'user' ? 'user-message' : 'match-message'}">
+    return messages.map((msg, index) => `
+      <div class="chat-message ${msg.sender === 'user' ? 'user-message' : 'match-message'}" data-message-index="${index}">
         <div class="message-bubble">
-          <p>${msg.text}</p>
-          <span class="message-time">${this.formatTime(msg.timestamp)}</span>
+          <p>${this.escapeHtml(msg.text)}</p>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+            <span class="message-time">${this.formatTime(msg.timestamp)}</span>
+            <div class="message-actions" style="display: flex; gap: 8px;">
+              <button class="btn-icon edit-message" data-index="${index}" title="Edit">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="btn-icon delete-message" data-index="${index}" title="Delete">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     `).join('');
+  }
+  
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
   
   formatTime(timestamp) {
@@ -1453,11 +1502,14 @@ Return ONLY valid JSON, no other text.`;
   }
   
   getPlanModeContent(match) {
+    const messages = this.currentConversation || [];
+    const conversationInsights = this.getConversationInsights(messages);
+    
     return `
       <div class="plan-mode">
         <div class="ai-chat-container">
           <div class="match-context-panel">
-            <h4>Match Profile</h4>
+            <h4><i class="fas fa-user-circle"></i> Match Profile</h4>
             <div class="context-item">
               <strong>Age:</strong> ${match.age}
             </div>
@@ -1483,6 +1535,24 @@ Return ONLY valid JSON, no other text.`;
             <div class="context-item">
               <strong>Your Notes:</strong> 
               <p style="margin-top: 8px; color: var(--text-secondary);">${match.notes}</p>
+            </div>
+            ` : ''}
+            
+            ${conversationInsights.messageCount > 0 ? `
+            <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+              <h4 style="margin-bottom: 16px;"><i class="fas fa-chart-line"></i> Conversation Stats</h4>
+              <div class="context-item">
+                <strong>Messages:</strong> ${conversationInsights.messageCount}
+              </div>
+              <div class="context-item">
+                <strong>Your Messages:</strong> ${conversationInsights.userMessages}
+              </div>
+              <div class="context-item">
+                <strong>Their Messages:</strong> ${conversationInsights.matchMessages}
+              </div>
+              <div class="context-item">
+                <strong>Avg Response Time:</strong> ${conversationInsights.avgResponseTime}
+              </div>
             </div>
             ` : ''}
           </div>
@@ -1536,6 +1606,80 @@ Return ONLY valid JSON, no other text.`;
     `;
   }
 
+  getConversationHealthBadge() {
+    const messages = this.currentConversation || [];
+    if (messages.length === 0) return '';
+    
+    const userMessages = messages.filter(m => m.sender === 'user').length;
+    const matchMessages = messages.filter(m => m.sender === 'match').length;
+    const ratio = userMessages / (matchMessages || 1);
+    
+    let health, color, icon;
+    if (ratio > 0.7 && ratio < 1.3 && messages.length > 4) {
+      health = 'Strong';
+      color = 'var(--success)';
+      icon = 'fire';
+    } else if (messages.length < 3) {
+      health = 'New';
+      color = 'var(--accent-primary)';
+      icon = 'seedling';
+    } else if (ratio < 0.5 || ratio > 2) {
+      health = 'Needs Balance';
+      color = 'var(--warning)';
+      icon = 'balance-scale';
+    } else {
+      health = 'Good';
+      color = 'var(--accent-primary)';
+      icon = 'check-circle';
+    }
+    
+    return `<span class=\"chip\" style=\"background: ${color}; color: white; border: none;\"><i class=\"fas fa-${icon}\"></i> ${health}</span>`;
+  }
+  
+  getConversationInsights(messages) {
+    if (!messages || messages.length === 0) {
+      return {
+        messageCount: 0,
+        userMessages: 0,
+        matchMessages: 0,
+        avgResponseTime: 'N/A'
+      };
+    }
+    
+    const userMessages = messages.filter(m => m.sender === 'user').length;
+    const matchMessages = messages.filter(m => m.sender === 'match').length;
+    
+    // Calculate average response time
+    let totalResponseTime = 0;
+    let responseCount = 0;
+    for (let i = 1; i < messages.length; i++) {
+      const timeDiff = new Date(messages[i].timestamp) - new Date(messages[i-1].timestamp);
+      if (timeDiff > 0 && timeDiff < 86400000) { // Less than 24 hours
+        totalResponseTime += timeDiff;
+        responseCount++;
+      }
+    }
+    
+    const avgMs = responseCount > 0 ? totalResponseTime / responseCount : 0;
+    const avgResponseTime = avgMs > 0 ? this.formatDuration(avgMs) : 'N/A';
+    
+    return {
+      messageCount: messages.length,
+      userMessages,
+      matchMessages,
+      avgResponseTime
+    };
+  }
+  
+  formatDuration(ms) {
+    const minutes = Math.floor(ms / 60000);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `${days}d`;
+  }
+
   initMatchDetailPage() {
     // Back button
     const backBtn = document.getElementById('back-to-matches');
@@ -1576,6 +1720,57 @@ Return ONLY valid JSON, no other text.`;
     if (addMatchMessageBtn) {
       addMatchMessageBtn.addEventListener('click', () => {
         this.showAddMessagePrompt('match');
+      });
+    }
+    
+    // Bulk import button
+    const bulkImportBtn = document.getElementById('bulk-import-btn');
+    if (bulkImportBtn) {
+      bulkImportBtn.addEventListener('click', () => {
+        this.showBulkImportModal();
+      });
+    }
+    
+    // Message edit/delete buttons
+    document.querySelectorAll('.edit-message').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const index = parseInt(btn.getAttribute('data-index'));
+        this.editMessage(index);
+      });
+    });
+    
+    document.querySelectorAll('.delete-message').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const index = parseInt(btn.getAttribute('data-index'));
+        this.deleteMessage(index);
+      });
+    });
+    
+    // Clear conversation button
+    const clearConvBtn = document.getElementById('clear-conversation-btn');
+    if (clearConvBtn) {
+      clearConvBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to clear all messages? This cannot be undone.')) {
+          this.clearConversation();
+        }
+      });
+    }
+    
+    // Export conversation button
+    const exportConvBtn = document.getElementById('export-conversation-btn');
+    if (exportConvBtn) {
+      exportConvBtn.addEventListener('click', () => {
+        this.exportConversation();
+      });
+    }
+    
+    // View profile button
+    const viewProfileBtn = document.getElementById('view-profile-btn');
+    if (viewProfileBtn) {
+      viewProfileBtn.addEventListener('click', () => {
+        this.showMatchProfileModal();
       });
     }
     
@@ -1766,6 +1961,160 @@ Return ONLY valid JSON, no other text.`;
     }
   }
   
+  showBulkImportModal() {
+    const text = prompt(
+      'Paste your conversation (one message per line):\n\n' +
+      'Format: You: message or Them: message\n\n' +
+      'Example:\n' +
+      'You: Hey! How\'s it going?\n' +
+      'Them: Pretty good! Just got back from hiking'
+    );
+    
+    if (!text || !text.trim()) return;
+    
+    const lines = text.trim().split('\n');
+    let imported = 0;
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      
+      let sender = null;
+      let message = null;
+      
+      if (trimmed.toLowerCase().startsWith('you:')) {
+        sender = 'user';
+        message = trimmed.substring(4).trim();
+      } else if (trimmed.toLowerCase().startsWith('them:') || trimmed.toLowerCase().startsWith('match:')) {
+        sender = 'match';
+        message = trimmed.substring(trimmed.indexOf(':') + 1).trim();
+      } else if (this.currentConversation && this.currentConversation.length > 0) {
+        // Alternate sender based on last message
+        const lastSender = this.currentConversation[this.currentConversation.length - 1].sender;
+        sender = lastSender === 'user' ? 'match' : 'user';
+        message = trimmed;
+      } else {
+        // Default to match starting the conversation
+        sender = 'match';
+        message = trimmed;
+      }
+      
+      if (message) {
+        this.addMessageToConversation(sender, message);
+        imported++;
+      }
+    }
+    
+    this.showToast(`Imported ${imported} messages!`, 'success');
+  }
+  
+  editMessage(index) {
+    const messages = this.currentConversation || [];
+    if (index < 0 || index >= messages.length) return;
+    
+    const msg = messages[index];
+    const newText = prompt('Edit message:', msg.text);
+    
+    if (newText && newText.trim() && newText !== msg.text) {
+      msg.text = newText.trim();
+      this.saveConversation();
+    }
+  }
+  
+  deleteMessage(index) {
+    const messages = this.currentConversation || [];
+    if (index < 0 || index >= messages.length) return;
+    
+    if (confirm('Delete this message?')) {
+      messages.splice(index, 1);
+      this.saveConversation();
+    }
+  }
+  
+  async clearConversation() {
+    const match = this.currentMatch;
+    const conversationId = match.id || match.name;
+    
+    try {
+      await window.api.clearConversation(conversationId);
+      this.currentConversation = [];
+      this.analyticsCacheStale = true;
+      this.loadPage('match-detail');
+      this.showToast('Conversation cleared', 'success');
+    } catch (error) {
+      console.error('Error clearing conversation:', error);
+      this.showToast('Error clearing conversation', 'error');
+    }
+  }
+  
+  exportConversation() {
+    const match = this.currentMatch;
+    const messages = this.currentConversation || [];
+    
+    if (messages.length === 0) {
+      this.showToast('No messages to export', 'info');
+      return;
+    }
+    
+    let text = `Conversation with ${match.name}\n`;
+    text += `Exported: ${new Date().toLocaleString()}\n`;
+    text += '='.repeat(50) + '\n\n';
+    
+    messages.forEach(msg => {
+      const sender = msg.sender === 'user' ? 'You' : match.name;
+      const time = this.formatTime(msg.timestamp);
+      text += `[${time}] ${sender}: ${msg.text}\n\n`;
+    });
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(text);
+    this.showToast('Conversation copied to clipboard!', 'success');
+  }
+  
+  async saveConversation() {
+    const match = this.currentMatch;
+    const conversationId = match.id || match.name;
+    
+    try {
+      // Update conversation in database
+      await window.api.updateConversation(conversationId, this.currentConversation);
+      this.analyticsCacheStale = true;
+      this.loadPage('match-detail');
+      this.showToast('Message updated', 'success');
+    } catch (error) {
+      console.error('Error saving conversation:', error);
+      this.showToast('Error saving changes', 'error');
+    }
+  }
+  
+  showMatchProfileModal() {
+    const match = this.currentMatch;
+    
+    let profileHtml = `<h3>${match.name}, ${match.age}</h3><p>${match.location}</p>`;
+    
+    if (match.occupation) {
+      profileHtml += `<p><strong>Occupation:</strong> ${match.occupation}</p>`;
+    }
+    
+    if (match.profile_data?.prompts && match.profile_data.prompts.length > 0) {
+      profileHtml += '<h4 style="margin-top: 24px;">Prompts:</h4>';
+      match.profile_data.prompts.forEach(prompt => {
+        profileHtml += `
+          <div style="margin: 16px 0; padding: 16px; background: var(--bg-input); border-radius: 12px;">
+            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">${prompt.question}</div>
+            <div>${prompt.answer}</div>
+          </div>
+        `;
+      });
+    }
+    
+    if (match.notes) {
+      profileHtml += `<h4 style="margin-top: 24px;">Your Notes:</h4><p>${match.notes}</p>`;
+    }
+    
+    alert(profileHtml); // For now, using alert. Can be enhanced with custom modal later
+  }
+
   async addMessageToConversation(sender, text) {
     const match = this.currentMatch;
     const conversationId = match.id || match.name;
